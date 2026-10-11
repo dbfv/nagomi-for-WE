@@ -156,8 +156,16 @@ input {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Centring only. The viewport-sized box below belongs to `.stage` alone: when
+   it was shared with these selectors, every <button> and <summary> in the app
+   resolved to 100vw x 100dvh, so each one padded the settings panel with a full
+   screen of blank space and the panel read as empty. */
 button,
-summary,
+summary {
+  display: grid;
+  place-items: center;
+}
+
 .stage {
   display: grid;
   width: 100vw;
