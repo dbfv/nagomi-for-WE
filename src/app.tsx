@@ -28,16 +28,6 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
@@ -385,6 +375,19 @@ export function App() {
     }
     setSettingsOpen(open);
   }, [setFamilyPreview]);
+
+  // The settings panel is a plain non-modal panel, so nothing closes it for us
+  // when the pointer is elsewhere. Escape is the only dismissal besides the
+  // close and Done buttons.
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const closeOnEscape = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape") return;
+      handleSettingsOpenChange(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [settingsOpen, handleSettingsOpenChange]);
 
   useEffect(() => {
     const unlockAmbientAudio = (): void => {
@@ -838,84 +841,92 @@ export function App() {
             </div>
             <Separator className="control-divider" orientation="vertical" />
             <div className="control-group control-group--settings">
-              <Drawer
-                open={settingsOpen}
-                onOpenChange={handleSettingsOpenChange}
-                modal={false}
-                swipeDirection={isMobile ? "down" : "right"}
-                showSwipeHandle={isMobile}
-                disablePointerDismissal
+              <Button
+                className="settings-trigger"
+                variant="ghost"
+                size="sm"
+                aria-label="Open pond settings"
+                aria-expanded={settingsOpen}
+                aria-controls="pond-settings"
+                onClick={() => handleSettingsOpenChange(!settingsOpen)}
               >
-                <DrawerTrigger
-                  render={
-                    <Button
-                      className="settings-trigger"
-                      variant="ghost"
-                      size="sm"
-                      aria-label="Open pond settings"
-                    />
-                  }
-                >
-                  <Settings2 aria-hidden="true" />
-                  <span className="control-label">Settings</span>
-                </DrawerTrigger>
-                <DrawerContent className="settings-drawer">
-                  <DrawerHeader className="settings-drawer__header">
-                    <div>
-                      <DrawerTitle>Pond settings</DrawerTitle>
-                      <DrawerDescription>
-                        Changes preview in the pond and save on this device.
-                      </DrawerDescription>
-                    </div>
-                    <DrawerClose
-                      render={
-                        <Button variant="ghost" size="icon" aria-label="Close settings" />
-                      }
-                    >
-                      <X aria-hidden="true" />
-                    </DrawerClose>
-                  </DrawerHeader>
-                  <div className="settings-scroll">
-                    <ConfigEditor
-                      query={searchQuery}
-                      onQueryChange={setSearchQuery}
-                      weather={weatherPreset}
-                      rainEnabled={rainEnabled}
-                      soundEnabled={soundEnabled}
-                      onWeatherChange={changeWeather}
-                      onRainChange={handleRainChange}
-                      onSoundChange={handleSoundChange}
-                      onResetSection={resetSection}
-                      onResetAtmosphere={resetAtmosphere}
-                      selectedFamily={selectedFamily}
-                      previewFamily={previewFamily}
-                      onFamilyChange={changeFamily}
-                      onPreviewFamilyChange={setFamilyPreview}
-                    />
-                  </div>
-                  <DrawerFooter className="settings-drawer__footer">
-                    {confirmResetAll ? (
-                      <div className="settings-reset-confirm" role="group" aria-label="Confirm reset all settings">
-                        <span>Reset all settings on this device?</span>
-                        <Button variant="ghost" onClick={() => setConfirmResetAll(false)}>Cancel</Button>
-                        <Button variant="destructive" onClick={resetSettings}>Reset all</Button>
-                      </div>
-                    ) : (
-                      <>
-                        <Button variant="ghost" onClick={undoLastInteraction} disabled={!canUndo}>
-                          <Undo2 aria-hidden="true" /> Undo
-                        </Button>
-                        <Button variant="outline" onClick={() => setConfirmResetAll(true)}>
-                          <RotateCcw aria-hidden="true" /> Reset all
-                        </Button>
-                        <DrawerClose render={<Button />}>Done</DrawerClose>
-                      </>
-                    )}
-                  </DrawerFooter>
-                </DrawerContent>
-              </Drawer>
+                <Settings2 aria-hidden="true" />
+                <span className="control-label">Settings</span>
+              </Button>
             </div>
           </nav>
+        )}
+
+        {/*
+          A plain fixed panel rather than a shadcn/ui Drawer. Wallpaper Engine
+          renders wallpapers through an off-screen CEF browser, and the Drawer's
+          measured-height/transform animation machinery kills that renderer
+          ("Aw, Snap!") the moment it mounts. This panel carries the same
+          settings-drawer markup hooks, so styles.css still styles it.
+        */}
+        {showInterface && settingsOpen && (
+          <div
+            id="pond-settings"
+            className="settings-drawer"
+            role="dialog"
+            aria-label="Pond settings"
+          >
+            <div className="settings-drawer__header" data-slot="drawer-header">
+              <div>
+                <div data-slot="drawer-title">Pond settings</div>
+                <div data-slot="drawer-description">
+                  Changes preview in the pond and save on this device.
+                </div>
+              </div>
+              <div data-slot="drawer-close">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Close settings"
+                  onClick={() => handleSettingsOpenChange(false)}
+                >
+                  <X aria-hidden="true" />
+                </Button>
+              </div>
+            </div>
+            <div className="settings-scroll">
+              <ConfigEditor
+                query={searchQuery}
+                onQueryChange={setSearchQuery}
+                weather={weatherPreset}
+                rainEnabled={rainEnabled}
+                soundEnabled={soundEnabled}
+                onWeatherChange={changeWeather}
+                onRainChange={handleRainChange}
+                onSoundChange={handleSoundChange}
+                onResetSection={resetSection}
+                onResetAtmosphere={resetAtmosphere}
+                selectedFamily={selectedFamily}
+                previewFamily={previewFamily}
+                onFamilyChange={changeFamily}
+                onPreviewFamilyChange={setFamilyPreview}
+              />
+            </div>
+            <div className="settings-drawer__footer" data-slot="drawer-footer">
+              {confirmResetAll ? (
+                <div className="settings-reset-confirm" role="group" aria-label="Confirm reset all settings">
+                  <span>Reset all settings on this device?</span>
+                  <Button variant="ghost" onClick={() => setConfirmResetAll(false)}>Cancel</Button>
+                  <Button variant="destructive" onClick={resetSettings}>Reset all</Button>
+                </div>
+              ) : (
+                <>
+                  <Button variant="ghost" onClick={undoLastInteraction} disabled={!canUndo}>
+                    <Undo2 aria-hidden="true" /> Undo
+                  </Button>
+                  <Button variant="outline" onClick={() => setConfirmResetAll(true)}>
+                    <RotateCcw aria-hidden="true" /> Reset all
+                  </Button>
+                  <Button onClick={() => handleSettingsOpenChange(false)}>Done</Button>
+                </>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </main>
