@@ -156,16 +156,19 @@ input {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Centring only. The viewport-sized box below belongs to `.stage` alone: when
-   it was shared with these selectors, every <button> and <summary> in the app
-   resolved to 100vw x 100dvh, so each one padded the settings panel with a full
-   screen of blank space and the panel read as empty. */
-button,
-summary {
-  display: grid;
-  place-items: center;
-}
+/* `.stage` owns the viewport-sized box, and it must stay alone. Two separate
+   accidents came from sharing it with `button, summary`:
 
+   1. The box itself leaked, giving every <button> and <summary> a 100vw x 100dvh
+      box that padded the settings panel with a screen of blank space.
+   2. This file is unlayered, so anything declared here outranks Tailwind's
+      layered utilities outright — `display` here beat the `.inline-flex` every
+      <Button> carries, stacking its icon, label and shortcut chip into one
+      column, which is what pushed the dock's labels out below the bar.
+
+   The elements that do need a display set it themselves: `.settings-section-reset`,
+   `.family-preview-toggle`, `.config-section`, `.config-advanced > summary` and
+   `.config-subgroup > summary`. */
 .stage {
   display: grid;
   width: 100vw;
@@ -245,13 +248,14 @@ summary {
 }
 
 /* Placeholder for the bottom-right menu toggle: no fill yet, so the outline is
-   deliberately loud. Tone it down once the icon lands. */
+   deliberately loud. Tone it down once the icon lands. Three times as wide as
+   it is tall, reaching left along the pond edge rather than sitting as a square. */
 .dock-toggle {
   position: absolute;
   right: clamp(0.6rem, 1.8vw, 1.1rem);
   bottom: 0.85rem;
   z-index: 6;
-  width: 3rem;
+  width: 9rem;
   height: 3rem;
   padding: 0;
   border: 2px dashed rgb(255 90 90 / 85%);
@@ -273,8 +277,9 @@ summary {
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 0.22rem;
-  padding: 0.32rem;
+  gap: 0.3rem;
+  min-height: 3rem;
+  padding: 0.45rem 0.55rem;
   border: 1px solid var(--border);
   border-radius: 1rem;
   background: rgb(24 24 27 / 92%);
@@ -455,24 +460,27 @@ summary {
    `contain` or `will-change`. Wallpaper Engine's CEF renderer crashes on the
    Drawer's compositing setup, so the panel keeps only an opacity fade. */
 .settings-drawer {
-  --panel-gutter: 0.65rem;
-  --panel-gap: 0.4rem;
+  --panel-gutter: 0.9rem;
+  --panel-gap: 0.5rem;
   position: fixed;
-  top: 0.45rem;
-  right: 0.45rem;
-  bottom: 0.45rem;
+  /* A centred dialog: `inset: 0` plus `margin: auto` centres a fixed box
+     without a `transform`, which the CEF renderer cannot be trusted with. */
+  inset: 0;
   z-index: 50;
   display: flex;
-  width: min(94vw, 29rem);
+  width: min(92vw, 52rem);
+  height: min(86dvh, 54rem);
+  max-height: calc(100dvh - 1rem);
+  margin: auto;
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
   border: 1px solid #1d1d1d;
-  border-radius: 0.45rem;
+  border-radius: 0.7rem;
   background: #303030;
   color: var(--foreground);
   font-size: 0.875rem;
-  box-shadow: -12px 0 36px rgb(0 0 0 / 38%);
+  box-shadow: 0 26px 70px rgb(0 0 0 / 58%);
   animation: settings-drawer-in 140ms ease-out;
 }
 
@@ -1125,7 +1133,7 @@ summary {
   .dock-toggle {
     right: 0.5rem;
     bottom: max(0.5rem, env(safe-area-inset-bottom));
-    width: 2.6rem;
+    width: 7.8rem;
     height: 2.6rem;
   }
 
@@ -1173,6 +1181,7 @@ summary {
     width: auto;
     height: min(56dvh, 34rem);
     max-height: calc(100dvh - 0.5rem);
+    margin: 0;
     border-radius: 0.5rem 0.5rem 0.16rem 0.16rem;
     box-shadow: 0 -12px 36px rgb(0 0 0 / 42%);
   }
