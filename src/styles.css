@@ -469,8 +469,11 @@ input {
   z-index: 50;
   display: flex;
   width: min(92vw, 52rem);
-  height: min(86dvh, 54rem);
-  max-height: calc(100dvh - 1rem);
+  /* Sized off the viewport, not a fixed 54rem: that cap is what forced the
+     settings tree to scroll on a tall monitor even though there was room to
+     show all of it. `max-height` still keeps it a dialog on a short window. */
+  height: min(88dvh, 70rem);
+  max-height: calc(100dvh - 1.5rem);
   margin: auto;
   min-height: 0;
   flex-direction: column;
@@ -524,9 +527,21 @@ input {
 }
 
 .settings-drawer__header [data-slot="drawer-close"] [data-slot="button"],
-.settings-drawer__header > [data-slot="drawer-close"] {
+.settings-drawer__header > [data-slot="drawer-close"],
+.settings-drawer__actions [data-slot="button"] {
   width: 1.65rem;
   height: 1.65rem;
+}
+
+/* The pager that stands in for the wheel Wallpaper Engine never forwards.
+   `margin-left: auto` keeps it and the close button clustered at the right of
+   the space-between header instead of the pager drifting to the centre. */
+.settings-drawer__actions {
+  display: flex;
+  flex: none;
+  gap: 0.15rem;
+  align-items: center;
+  margin-left: auto;
 }
 
 .settings-search {
@@ -562,8 +577,10 @@ input {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: var(--panel-gap) var(--panel-gutter) var(--panel-gutter);
+  /* Full-width scrollbar, not `thin`: with the wheel unavailable under
+     Wallpaper Engine, a grab-and-drag thumb is the other scroll path, and a
+     hairline one is a bad target. */
   scrollbar-color: #5b5b5b transparent;
-  scrollbar-width: thin;
 }
 
 .settings-drawer__footer {

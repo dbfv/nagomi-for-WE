@@ -1,4 +1,6 @@
 import {
+  ChevronDown,
+  ChevronUp,
   Cloud,
   CloudFog,
   CloudRain,
@@ -162,6 +164,7 @@ export function App() {
   const stageRef = useRef<HTMLElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const settingsScrollRef = useRef<HTMLDivElement>(null);
   const ambientAudioContextRef = useRef<AudioContext | null>(null);
   const ambientAudioGainRef = useRef<GainNode | null>(null);
   const ambientAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
@@ -375,6 +378,19 @@ export function App() {
     }
     setSettingsOpen(open);
   }, [setFamilyPreview]);
+
+  // Wallpaper Engine never forwards the mouse wheel to a wallpaper (left clicks
+  // work, the wheel does not), so the settings tree gets its own pager in the
+  // dialog header. Instant rather than smooth: this renderer is the reason the
+  // panel carries no compositing tricks, and a scroll animation is one more.
+  const scrollSettingsBy = useCallback((direction: -1 | 1) => {
+    const container = settingsScrollRef.current;
+    if (!container) return;
+    container.scrollBy({
+      top: direction * Math.round(container.clientHeight * 0.82),
+      behavior: "auto",
+    });
+  }, []);
 
   // The settings panel is a plain non-modal panel, so nothing closes it for us
   // when the pointer is elsewhere. Escape is the only dismissal besides the
@@ -886,6 +902,24 @@ export function App() {
                   Changes preview in the pond and save on this device.
                 </div>
               </div>
+              <div className="settings-drawer__actions">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Scroll settings up"
+                  onClick={() => scrollSettingsBy(-1)}
+                >
+                  <ChevronUp aria-hidden="true" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Scroll settings down"
+                  onClick={() => scrollSettingsBy(1)}
+                >
+                  <ChevronDown aria-hidden="true" />
+                </Button>
+              </div>
               <div data-slot="drawer-close">
                 <Button
                   variant="ghost"
@@ -897,7 +931,7 @@ export function App() {
                 </Button>
               </div>
             </div>
-            <div className="settings-scroll">
+            <div className="settings-scroll" ref={settingsScrollRef}>
               <ConfigEditor
                 query={searchQuery}
                 onQueryChange={setSearchQuery}
