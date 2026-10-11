@@ -27,7 +27,6 @@ export function WallpaperAppLink({ href }: WallpaperAppLinkProps) {
         }
       >
         <Monitor aria-hidden="true" />
-        <span>Wallpaper app</span>
       </TooltipTrigger>
 
       <TooltipContent>Use Nagomi as your desktop wallpaper</TooltipContent>

@@ -196,6 +196,24 @@ input[type="color"] {
     0 30px 90px rgb(0 0 0 / 52%);
 }
 
+/* Full-bleed on desktop-sized pointers: the pond fills the viewport edge to
+   edge so it drops straight into a 2240x1400 (or any other) wallpaper with no
+   letterboxing. The exact complement of the mobile query further down, so the
+   two layouts can never both apply. */
+@media (min-width: 701px) and (pointer: fine) {
+  .pond-shell {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .display {
+    height: 100%;
+    aspect-ratio: auto;
+    box-shadow: none;
+  }
+}
+
 #pond {
   display: block;
   width: 100%;
@@ -222,91 +240,26 @@ input[type="color"] {
   pointer-events: none;
 }
 
-.pond-ui {
+/* Placeholder for the bottom-right menu toggle: no fill yet, so the outline is
+   deliberately loud. Tone it down once the icon lands. */
+.dock-toggle {
   position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
+  right: clamp(0.6rem, 1.8vw, 1.1rem);
+  bottom: 0.85rem;
+  z-index: 6;
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  border: 2px dashed rgb(255 90 90 / 85%);
+  border-radius: 1rem;
+  background: rgb(255 90 90 / 12%);
+  cursor: pointer;
   transition: opacity 180ms ease;
 }
 
-.pond-ui > * {
-  pointer-events: auto;
-}
-
-.pond-ui--hidden {
+.dock-toggle--hidden {
   opacity: 0;
   pointer-events: none;
-}
-
-.pond-ui--hidden > * {
-  pointer-events: none;
-}
-
-.brand-float,
-.top-actions,
-.control-dock {
-  border: 1px solid var(--border);
-  background: rgb(24 24 27 / 92%);
-  color: var(--foreground);
-  box-shadow:
-    0 10px 34px rgb(0 0 0 / 24%),
-    inset 0 1px 0 rgb(255 255 255 / 7%);
-}
-
-.brand-float {
-  position: absolute;
-  top: clamp(0.6rem, 1.8vw, 1.1rem);
-  left: clamp(0.6rem, 1.8vw, 1.1rem);
-  display: flex;
-  align-items: center;
-  box-sizing: border-box;
-  width: max-content;
-  height: var(--top-bar-height);
-  padding: 0 0.72rem;
-  overflow: hidden;
-  border-radius: 0.7rem;
-}
-
-.brand-wordmark {
-  margin: 0;
-  color: var(--foreground);
-  font-size: 0.78rem;
-  font-weight: 660;
-  letter-spacing: 0.14em;
-  line-height: 1;
-}
-
-.pond-ui {
-  /* Shared by the brand box and the action panel so their heights match. */
-  --top-bar-height: calc(1.8rem + 0.44rem + 2px);
-}
-
-.top-actions {
-  position: absolute;
-  top: clamp(0.6rem, 1.8vw, 1.1rem);
-  right: clamp(0.6rem, 1.8vw, 1.1rem);
-  display: flex;
-  align-items: center;
-  gap: 0.16rem;
-  padding: 0.22rem;
-  border-radius: 0.85rem;
-}
-
-.top-actions [data-slot="separator"] {
-  width: 1px;
-  height: 1.1rem;
-  margin: 0 0.08rem;
-  background: var(--border);
-}
-
-.top-actions [data-slot="button"]:hover {
-  background: var(--accent);
-}
-
-.settings-trigger {
-  height: 1.8rem;
-  border-radius: 0.62rem;
 }
 
 .control-dock {
@@ -318,7 +271,13 @@ input[type="color"] {
   align-items: center;
   gap: 0.22rem;
   padding: 0.32rem;
+  border: 1px solid var(--border);
   border-radius: 1rem;
+  background: rgb(24 24 27 / 92%);
+  color: var(--foreground);
+  box-shadow:
+    0 10px 34px rgb(0 0 0 / 24%),
+    inset 0 1px 0 rgb(255 255 255 / 7%);
   transform: translateX(-50%);
   transition:
     opacity 180ms ease,
@@ -352,22 +311,8 @@ input[type="color"] {
   background: var(--accent);
 }
 
-.github-stars {
-  gap: 0.38rem;
-  padding-inline: 0.48rem;
-}
-
-.wallpaper-link {
-  gap: 0.38rem;
-  padding-inline: 0.55rem;
+.settings-trigger {
   border-radius: 0.62rem;
-}
-
-.github-stars__count {
-  color: var(--muted-foreground);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-variant-numeric: tabular-nums;
 }
 
 .control-shortcut {
@@ -1068,45 +1013,15 @@ input[type="color"] {
 @media (max-width: 700px), (pointer: coarse) {
   .pond-shell {
     display: flex;
-    width: min(100vw, calc((100dvh - 7.25rem) * 16 / 9));
+    /* Reserves room for the dock and its margins below the pond. */
+    width: min(100vw, calc((100dvh - 3.95rem) * 16 / 9));
     flex-direction: column;
   }
 
-  .pond-ui {
-    position: static;
-    order: -1;
-    display: flex;
-    width: 100%;
-    align-items: stretch;
-    justify-content: space-between;
-    margin-bottom: 0.65rem;
-    padding-inline: 0.5rem;
-  }
-
-  .brand-float {
-    position: static;
-    height: auto;
-    padding: 0 0.52rem;
-    border-radius: 0.8rem;
-  }
-
-  .top-actions {
-    position: static;
-  }
-
   .settings-trigger {
-    position: static;
     width: 2rem;
     height: 2rem;
     padding: 0;
-  }
-
-  .settings-trigger span {
-    display: none;
-  }
-
-  .wallpaper-link {
-    height: 2rem;
   }
 
   .control-dock {
@@ -1122,11 +1037,20 @@ input[type="color"] {
     transform: none;
   }
 
+  .control-dock--hidden {
+    display: none;
+  }
+
   .control-group--environment {
     grid-column: 1 / -1;
     justify-content: center;
     padding-top: 0.3rem;
     border-top: 1px solid var(--border);
+  }
+
+  .control-group--settings {
+    grid-column: 1 / -1;
+    justify-content: center;
   }
 
   .control-group--view {
@@ -1137,19 +1061,16 @@ input[type="color"] {
     display: none;
   }
 
+  .dock-toggle {
+    right: 0.5rem;
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    width: 2.6rem;
+    height: 2.6rem;
+  }
+
   .stage--ambient .pond-shell {
     display: block;
     width: min(100vw, calc(100dvh * 16 / 9));
-  }
-
-  .stage--ambient .pond-ui {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    width: auto;
-    align-items: flex-start;
-    margin: 0;
-    padding: max(0.6rem, env(safe-area-inset-top)) 0.6rem 0;
   }
 
   .stage--ambient .control-dock {
@@ -1181,11 +1102,6 @@ input[type="color"] {
   .control-group--environment .control-label,
   .control-group--environment .rain-control__label {
     display: inline;
-  }
-
-  .top-actions .github-stars {
-    width: auto;
-    min-width: 2.9rem;
   }
 
   .settings-drawer {
@@ -1226,16 +1142,14 @@ input[type="color"] {
     aspect-ratio: auto;
   }
 
-  .pond-ui {
-    flex: none;
-    margin-bottom: 0.35rem;
-    padding-top: max(0.5rem, env(safe-area-inset-top));
-  }
-
   .control-dock {
     flex: none;
     margin-top: 0.35rem;
     margin-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .dock-toggle {
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
 
   .stage--ambient .pond-shell {
@@ -1245,30 +1159,6 @@ input[type="color"] {
 
   .stage--ambient .display {
     height: 100%;
-  }
-}
-
-@media (max-width: 350px) {
-  .brand-float {
-    flex-shrink: 0;
-  }
-
-  .github-stars__count {
-    display: none;
-  }
-
-  .top-actions {
-    gap: 0;
-  }
-
-  .github-stars {
-    padding-inline: 0.4rem;
-  }
-
-  .wallpaper-link {
-    gap: 0.3rem;
-    padding-inline: 0.3rem;
-    font-size: 0.8rem;
   }
 }
 
