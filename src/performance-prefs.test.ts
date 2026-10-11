@@ -72,12 +72,9 @@ describe("performance prefs", () => {
     expect(() => savePerformancePrefs(defaultPerformancePrefs())).not.toThrow();
   });
 
-  it("uses 30 in ambient mode only when the user has not chosen", () => {
-    const auto = defaultPerformancePrefs();
-    expect(effectiveFrameRate(auto, false)).toBe("60");
-    expect(effectiveFrameRate(auto, true)).toBe("30");
+  it("uses the default cap until the user picks one", () => {
+    expect(effectiveFrameRate(defaultPerformancePrefs())).toBe("60");
     const explicit = { version: 1 as const, frameRate: "native" as const, explicit: true };
-    expect(effectiveFrameRate(explicit, false)).toBe("native");
-    expect(effectiveFrameRate(explicit, true)).toBe("native");
+    expect(effectiveFrameRate(explicit)).toBe("native");
   });
 });

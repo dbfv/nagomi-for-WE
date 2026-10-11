@@ -4,16 +4,12 @@ import {
   Cloud,
   CloudFog,
   CloudRain,
-  EyeOff,
   Gauge,
-  Maximize2,
   Minus,
-  Minimize2,
   Moon,
   Plus,
   RotateCcw,
   Settings2,
-  Shuffle,
   Sun,
   Sunset as SunsetIcon,
   Undo2,
@@ -37,7 +33,6 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Kbd } from "@/components/ui/kbd";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { AUDIO } from "./audio-config";
@@ -52,7 +47,6 @@ import {
 } from "./config";
 import { FishRenderer } from "./fish-renderer";
 import { createFrameLimiter } from "./frame-limiter";
-import { useIsMobile } from "./hooks/use-mobile";
 import { clamp, vec } from "./math";
 import {
   FRAME_RATE_OPTIONS,
@@ -89,8 +83,6 @@ interface PondRuntime {
 const emptyStats: SceneStats = {
   koi: FISH.initialCount,
 };
-
-const AMBIENT_IDLE_DELAY_MS = 2400;
 
 // Restores v2 (or migrates v1) localStorage settings into the store before
 // the first render, and wires up debounced+pagehide saving from then on.
@@ -160,7 +152,6 @@ function WeatherIcon({ id }: { id: WeatherPresetId }) {
 }
 
 export function App() {
-  const isMobile = useIsMobile();
   const stageRef = useRef<HTMLElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -170,19 +161,15 @@ export function App() {
   const ambientAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const ambientAudioLoadingRef = useRef<Promise<void> | null>(null);
   const runtimeRef = useRef<PondRuntime | null>(null);
-  const ambientModeRef = useRef(false);
   const soundEnabledRef = useRef<boolean>(AUDIO.defaultEnabled);
   const [stats, setStats] = useState<SceneStats>(emptyStats);
-  const [showInterface, setShowInterface] = useState(true);
   const [dockVisible, setDockVisible] = useState(true);
-  const [ambientMode, setAmbientMode] = useState(false);
-  const [ambientControlsVisible, setAmbientControlsVisible] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [weatherMenuOpen, setWeatherMenuOpen] = useState(false);
   const [frameRateMenuOpen, setFrameRateMenuOpen] = useState(false);
   const [performancePrefs, setPerformancePrefs] =
     useState<PerformancePrefs>(loadPerformancePrefs);
-  const frameRateCap = effectiveFrameRate(performancePrefs, ambientMode);
+  const frameRateCap = effectiveFrameRate(performancePrefs);
   // The render loop reads the cap from a ref so changing it never re-runs the
   // runtime effect (which would dispose and recreate the renderer).
   const frameRateCapRef = useRef(frameRateCap);
@@ -196,13 +183,6 @@ export function App() {
   const previewFamilyRef = useRef<number | null>(null);
   const [confirmResetAll, setConfirmResetAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-
-  const scatter = useCallback(() => {
-    const runtime = runtimeRef.current;
-    if (!runtime) return;
-    runtime.school.scatter();
-    setStats(sceneStats(runtime));
-  }, []);
 
   const setFamilyPreview = useCallback((index: number | null) => {
     previewFamilyRef.current = index;
@@ -236,12 +216,6 @@ export function App() {
     settings.set(["koi", "initialCount"], clamp(current + amount, 1, 48));
   }, []);
 
-  const setAmbientModeState = useCallback((active: boolean) => {
-    ambientModeRef.current = active;
-    setAmbientMode(active);
-    setAmbientControlsVisible(true);
-  }, []);
-
   useEffect(() => {
     frameRateCapRef.current = frameRateCap;
   }, [frameRateCap]);
@@ -252,25 +226,6 @@ export function App() {
     setPerformancePrefs(next);
     savePerformancePrefs(next);
   }, []);
-
-  const toggleAmbientMode = useCallback(async () => {
-    const stage = stageRef.current;
-    if (!stage) return;
-
-    if (ambientModeRef.current) {
-      setAmbientModeState(false);
-      if (document.fullscreenElement) {
-        await document.exitFullscreen().catch(() => undefined);
-      }
-      return;
-    }
-
-    setAmbientModeState(true);
-    const fullscreenRoot = document.documentElement;
-    if (!document.fullscreenElement && fullscreenRoot.requestFullscreen) {
-      await fullscreenRoot.requestFullscreen().catch(() => undefined);
-    }
-  }, [setAmbientModeState]);
 
   // Keeps the renderer's weather look and the simulation's rain intensity in
   // sync with the store, whether they change via a slider, Undo, or reload.
@@ -459,55 +414,6 @@ export function App() {
   }, [changeWeather, setAmbientSoundEnabled]);
 
   useEffect(() => {
-    const handleFullscreenChange = (): void => {
-      if (document.fullscreenElement === document.documentElement) {
-        setAmbientModeState(true);
-      } else if (ambientModeRef.current && !document.fullscreenElement) {
-        setAmbientModeState(false);
-      }
-    };
-
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-    };
-  }, [setAmbientModeState]);
-
-  useEffect(() => {
-    if (!ambientMode || settingsOpen || weatherMenuOpen || frameRateMenuOpen) {
-      setAmbientControlsVisible(true);
-      return;
-    }
-
-    let idleTimer = window.setTimeout(
-      () => setAmbientControlsVisible(false),
-      AMBIENT_IDLE_DELAY_MS,
-    );
-    const revealControls = (): void => {
-      setAmbientControlsVisible(true);
-      window.clearTimeout(idleTimer);
-      idleTimer = window.setTimeout(
-        () => setAmbientControlsVisible(false),
-        AMBIENT_IDLE_DELAY_MS,
-      );
-    };
-
-    window.addEventListener("pointermove", revealControls);
-    window.addEventListener("pointerdown", revealControls);
-    window.addEventListener("keydown", revealControls);
-    return () => {
-      window.clearTimeout(idleTimer);
-      window.removeEventListener("pointermove", revealControls);
-      window.removeEventListener("pointerdown", revealControls);
-      window.removeEventListener("keydown", revealControls);
-    };
-  }, [ambientMode, settingsOpen, weatherMenuOpen, frameRateMenuOpen]);
-
-  useEffect(() => {
-    if (!showInterface && previewFamilyRef.current !== null) setFamilyPreview(null);
-  }, [showInterface, setFamilyPreview]);
-
-  useEffect(() => {
     const canvas = canvasRef.current;
     const display = displayRef.current;
     if (!canvas || !display) return;
@@ -575,15 +481,8 @@ export function App() {
         case "KeyD":
           runtime.showDebug = !runtime.showDebug;
           break;
-        case "KeyH":
-          setShowInterface((current) => !current);
-          break;
         case "KeyR":
           school.reset();
-          break;
-        case "KeyF":
-          event.preventDefault();
-          void toggleAmbientMode();
           break;
         default:
           return;
@@ -603,7 +502,7 @@ export function App() {
       renderer.dispose();
       runtimeRef.current = null;
     };
-  }, [changeKoiCount, toggleAmbientMode]);
+  }, [changeKoiCount]);
 
   const callFish = (event: ReactPointerEvent<HTMLCanvasElement>): void => {
     const runtime = runtimeRef.current;
@@ -626,31 +525,14 @@ export function App() {
     setStats(sceneStats(runtime));
   };
 
-  const revealHiddenInterfaceOnMobile = (
-    event: ReactPointerEvent<HTMLElement>,
-  ): void => {
-    if (!isMobile || showInterface) return;
-    event.preventDefault();
-    event.stopPropagation();
-    setShowInterface(true);
-  };
-
   const selectedWeather = getWeatherPreset(weatherPreset);
   const selectedFrameRate = frameRateOption(frameRateCap);
-  const ambientUiHeldOpen = settingsOpen || weatherMenuOpen || frameRateMenuOpen;
-  const ambientUiHidden =
-    ambientMode && !ambientControlsVisible && !ambientUiHeldOpen;
 
   return (
     <main
       ref={stageRef}
-      className={`stage${ambientMode ? " stage--ambient" : ""}${
-        ambientUiHidden
-          ? " stage--ambient-idle"
-          : ""
-      }`}
+      className="stage"
       aria-label="Procedural koi simulation"
-      onPointerDownCapture={revealHiddenInterfaceOnMobile}
     >
       <div className="pond-shell">
         <div className="display" ref={displayRef}>
@@ -667,219 +549,171 @@ export function App() {
           )}
         </div>
 
-        {showInterface && (
-          <button
-            type="button"
-            className={`dock-toggle${
-              ambientUiHidden ? " dock-toggle--hidden" : ""
-            }`}
-            onClick={() => setDockVisible((visible) => !visible)}
-            aria-label={dockVisible ? "Hide the control menu" : "Show the control menu"}
-            aria-pressed={dockVisible}
-            aria-controls="control-dock"
-          />
-        )}
+        <button
+          type="button"
+          className="dock-toggle"
+          onClick={() => setDockVisible((visible) => !visible)}
+          aria-label={dockVisible ? "Hide the control menu" : "Show the control menu"}
+          aria-pressed={dockVisible}
+          aria-controls="control-dock"
+        />
 
-        {showInterface && (
-          <nav
-            id="control-dock"
-            className={`control-dock${
-              ambientUiHidden || !dockVisible
-                ? " control-dock--hidden"
-                : ""
-            }`}
-            aria-label="Simulation controls"
-          >
-            <div className="control-group control-group--view">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void toggleAmbientMode()}
-                aria-label={ambientMode ? "Exit ambient mode" : "Enter ambient mode"}
-                aria-keyshortcuts="F"
-                aria-pressed={ambientMode}
+        <nav
+          id="control-dock"
+          className={`control-dock${!dockVisible ? " control-dock--hidden" : ""}`}
+          aria-label="Simulation controls"
+        >
+          <div className="control-group control-group--view">
+            <DropdownMenu
+              open={frameRateMenuOpen}
+              onOpenChange={setFrameRateMenuOpen}
+            >
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    className="frame-rate-trigger"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Frame rate: ${selectedFrameRate.label}`}
+                  />
+                }
               >
-                {ambientMode ? (
-                  <Minimize2 aria-hidden="true" />
-                ) : (
-                  <Maximize2 aria-hidden="true" />
-                )}
-                <span className="control-label">{ambientMode ? "Exit" : "Ambient"}</span>
-                <Kbd className="control-shortcut">F</Kbd>
-              </Button>
-              <DropdownMenu
-                open={frameRateMenuOpen}
-                onOpenChange={setFrameRateMenuOpen}
+                <Gauge aria-hidden="true" />
+                <span className="control-label">{selectedFrameRate.label}</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="frame-rate-menu"
+                side="top"
+                align="center"
+                sideOffset={8}
               >
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      className="frame-rate-trigger"
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Frame rate: ${selectedFrameRate.label}`}
-                    />
+                <DropdownMenuRadioGroup
+                  value={frameRateCap}
+                  onValueChange={changeFrameRate}
+                >
+                  <DropdownMenuLabel>Frame rate</DropdownMenuLabel>
+                  {FRAME_RATE_OPTIONS.map((option) => (
+                    <DropdownMenuRadioItem
+                      key={option.id}
+                      value={option.id}
+                      closeOnClick
+                    >
+                      <span className="frame-rate-option">
+                        <span className="frame-rate-option__label">{option.label}</span>
+                        <span className="frame-rate-option__hint">{option.description}</span>
+                      </span>
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <Separator className="control-divider" orientation="vertical" />
+          <div className="control-group control-group--simulation">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => changeKoiCount(-1)}
+              aria-label="Remove one koi"
+              aria-keyshortcuts="["
+            >
+              <Minus aria-hidden="true" />
+            </Button>
+            <output className="koi-count" aria-live="polite">
+              {stats.koi}
+            </output>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => changeKoiCount(1)}
+              aria-label="Add one koi"
+              aria-keyshortcuts="]"
+            >
+              <Plus aria-hidden="true" />
+            </Button>
+          </div>
+          <Separator className="control-divider" orientation="vertical" />
+          <div className="control-group control-group--environment">
+            <DropdownMenu
+              open={weatherMenuOpen}
+              onOpenChange={setWeatherMenuOpen}
+            >
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    className="weather-trigger"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Weather: ${selectedWeather.label}`}
+                  />
+                }
+              >
+                <WeatherIcon id={weatherPreset} />
+                <span className="control-label">{selectedWeather.label}</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="weather-menu"
+                side="top"
+                align="center"
+                sideOffset={8}
+              >
+                <DropdownMenuRadioGroup
+                  value={weatherPreset}
+                  onValueChange={(value) =>
+                    changeWeather(value as WeatherPresetId)
                   }
                 >
-                  <Gauge aria-hidden="true" />
-                  <span className="control-label">{selectedFrameRate.label}</span>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="frame-rate-menu"
-                  side="top"
-                  align="center"
-                  sideOffset={8}
-                >
-                  <DropdownMenuRadioGroup
-                    value={frameRateCap}
-                    onValueChange={changeFrameRate}
-                  >
-                    <DropdownMenuLabel>Frame rate</DropdownMenuLabel>
-                    {FRAME_RATE_OPTIONS.map((option) => (
-                      <DropdownMenuRadioItem
-                        key={option.id}
-                        value={option.id}
-                        closeOnClick
-                      >
-                        <span className="frame-rate-option">
-                          <span className="frame-rate-option__label">{option.label}</span>
-                          <span className="frame-rate-option__hint">{option.description}</span>
-                        </span>
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button
-                variant="ghost"
+                  <DropdownMenuLabel>Weather and lighting</DropdownMenuLabel>
+                  {WEATHER_PRESETS.map((preset) => (
+                    <DropdownMenuRadioItem
+                      key={preset.id}
+                      value={preset.id}
+                      closeOnClick
+                    >
+                      <WeatherIcon id={preset.id} />
+                      {preset.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="rain-control">
+              <CloudRain aria-hidden="true" />
+              <span className="rain-control__label">Rain</span>
+              <Switch
                 size="sm"
-                onClick={() => setShowInterface(false)}
-                aria-label="Hide interface"
-                aria-keyshortcuts="H"
-              >
-                <EyeOff aria-hidden="true" />
-                <span className="control-label">Hide UI</span>
-                <Kbd className="control-shortcut">H</Kbd>
-              </Button>
+                checked={rainEnabled}
+                onCheckedChange={handleRainChange}
+                aria-label="Toggle rain ripples"
+              />
             </div>
-            <Separator className="control-divider" orientation="vertical" />
-            <div className="control-group control-group--simulation">
-              <Button
-                variant="secondary"
+            <div className="rain-control">
+              <Volume2 aria-hidden="true" />
+              <span className="rain-control__label">Sound</span>
+              <Switch
                 size="sm"
-                onClick={scatter}
-                aria-keyshortcuts="Space"
-              >
-                <Shuffle aria-hidden="true" />
-                <span className="control-label">Scatter</span>
-                <Kbd className="control-shortcut">Space</Kbd>
-              </Button>
-              <Separator orientation="vertical" />
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => changeKoiCount(-1)}
-                aria-label="Remove one koi"
-                aria-keyshortcuts="["
-              >
-                <Minus aria-hidden="true" />
-              </Button>
-              <output className="koi-count" aria-live="polite">
-                {stats.koi}
-              </output>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => changeKoiCount(1)}
-                aria-label="Add one koi"
-                aria-keyshortcuts="]"
-              >
-                <Plus aria-hidden="true" />
-              </Button>
+                checked={soundEnabled}
+                onCheckedChange={handleSoundChange}
+                aria-label="Toggle pond ambience"
+              />
             </div>
-            <Separator className="control-divider" orientation="vertical" />
-            <div className="control-group control-group--environment">
-              <DropdownMenu
-                open={weatherMenuOpen}
-                onOpenChange={setWeatherMenuOpen}
-              >
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      className="weather-trigger"
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Weather: ${selectedWeather.label}`}
-                    />
-                  }
-                >
-                  <WeatherIcon id={weatherPreset} />
-                  <span className="control-label">{selectedWeather.label}</span>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="weather-menu"
-                  side="top"
-                  align="center"
-                  sideOffset={8}
-                >
-                  <DropdownMenuRadioGroup
-                    value={weatherPreset}
-                    onValueChange={(value) =>
-                      changeWeather(value as WeatherPresetId)
-                    }
-                  >
-                    <DropdownMenuLabel>Weather and lighting</DropdownMenuLabel>
-                    {WEATHER_PRESETS.map((preset) => (
-                      <DropdownMenuRadioItem
-                        key={preset.id}
-                        value={preset.id}
-                        closeOnClick
-                      >
-                        <WeatherIcon id={preset.id} />
-                        {preset.label}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <div className="rain-control">
-                <CloudRain aria-hidden="true" />
-                <span className="rain-control__label">Rain</span>
-                <Switch
-                  size="sm"
-                  checked={rainEnabled}
-                  onCheckedChange={handleRainChange}
-                  aria-label="Toggle rain ripples"
-                />
-              </div>
-              <div className="rain-control">
-                <Volume2 aria-hidden="true" />
-                <span className="rain-control__label">Sound</span>
-                <Switch
-                  size="sm"
-                  checked={soundEnabled}
-                  onCheckedChange={handleSoundChange}
-                  aria-label="Toggle pond ambience"
-                />
-              </div>
-            </div>
-            <Separator className="control-divider" orientation="vertical" />
-            <div className="control-group control-group--settings">
-              <Button
-                className="settings-trigger"
-                variant="ghost"
-                size="sm"
-                aria-label="Open pond settings"
-                aria-expanded={settingsOpen}
-                aria-controls="pond-settings"
-                onClick={() => handleSettingsOpenChange(!settingsOpen)}
-              >
-                <Settings2 aria-hidden="true" />
-                <span className="control-label">Settings</span>
-              </Button>
-            </div>
+          </div>
+          <Separator className="control-divider" orientation="vertical" />
+          <div className="control-group control-group--settings">
+            <Button
+              className="settings-trigger"
+              variant="ghost"
+              size="sm"
+              aria-label="Open pond settings"
+              aria-expanded={settingsOpen}
+              aria-controls="pond-settings"
+              onClick={() => handleSettingsOpenChange(!settingsOpen)}
+            >
+              <Settings2 aria-hidden="true" />
+              <span className="control-label">Settings</span>
+            </Button>
+          </div>
           </nav>
-        )}
 
         {/*
           A plain fixed panel rather than a shadcn/ui Drawer. Wallpaper Engine
@@ -888,7 +722,7 @@ export function App() {
           ("Aw, Snap!") the moment it mounts. This panel carries the same
           settings-drawer markup hooks, so styles.css still styles it.
         */}
-        {showInterface && settingsOpen && (
+        {settingsOpen && (
           <div
             id="pond-settings"
             className="settings-drawer"

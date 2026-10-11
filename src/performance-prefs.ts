@@ -27,7 +27,6 @@ export const FRAME_RATE_OPTIONS: readonly FrameRateOption[] = [
 ];
 
 export const DEFAULT_FRAME_RATE: FrameRateCap = "60";
-export const AMBIENT_FRAME_RATE: FrameRateCap = "30";
 export const PERFORMANCE_STORAGE_KEY = "nagomi:performance:v1";
 
 export function defaultPerformancePrefs(): PerformancePrefs {
@@ -66,8 +65,7 @@ export function savePerformancePrefs(prefs: PerformancePrefs): void {
   }
 }
 
-/** An explicit pick always wins; otherwise ambient mode defaults to 30. */
-export function effectiveFrameRate(prefs: PerformancePrefs, ambientMode: boolean): FrameRateCap {
-  if (prefs.explicit) return prefs.frameRate;
-  return ambientMode ? AMBIENT_FRAME_RATE : DEFAULT_FRAME_RATE;
+/** An explicit pick always wins; otherwise the default cap applies. */
+export function effectiveFrameRate(prefs: PerformancePrefs): FrameRateCap {
+  return prefs.explicit ? prefs.frameRate : DEFAULT_FRAME_RATE;
 }
