@@ -158,10 +158,6 @@ input {
 
 button,
 summary,
-input[type="color"] {
-  cursor: pointer;
-}
-
 .stage {
   display: grid;
   width: 100vw;
@@ -699,6 +695,36 @@ input[type="color"] {
   font-size: 0.66rem;
 }
 
+/* The in-DOM stand-in for a native <select>: a button that opens a Base UI menu
+   drawn inside the page. A native select hands its dropdown to a separate popup
+   widget, which is exactly what Wallpaper Engine's off-screen CEF browser
+   cannot host. */
+.settings-select__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.settings-select__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-select__chevron {
+  width: 0.7rem;
+  height: 0.7rem;
+  flex: none;
+  opacity: 0.55;
+}
+
+.settings-select__menu {
+  font-size: 0.7rem;
+}
+
 .quick-colors {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -721,14 +747,37 @@ input[type="color"] {
   font-size: 0.62rem;
 }
 
-.quick-color input {
-  width: 1.8rem;
-  height: 1.6rem;
+/* Shared by the quick koi/water colours and the advanced colour rows: a swatch
+   plus a plain hex field, replacing the native <input type="color"> whose OS
+   dialog window an off-screen CEF renderer cannot open. */
+.settings-color {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.settings-color__swatch {
+  width: 1.05rem;
+  height: 1.05rem;
   flex: none;
-  padding: 0;
   border: 1px solid #242424;
   border-radius: 0.2rem;
-  background: transparent;
+}
+
+.settings-color__input {
+  width: 100%;
+  min-width: 0;
+  height: 1.45rem;
+  padding: 0 0.3rem;
+  border: 1px solid #242424;
+  border-radius: 0.2rem;
+  background: #292929;
+  color: #eeeeee;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
 }
 
 .quick-setting--switch [data-slot="switch"] {
@@ -987,23 +1036,7 @@ input[type="color"] {
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  justify-self: end;
-}
-
-.color-control input {
-  width: 1.65rem;
-  height: 1.65rem;
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid #1f1f1f;
-  border-radius: 0.2rem;
-  background: transparent;
-}
-
-.color-control code {
-  color: #b7b7b7;
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
+  justify-self: stretch;
 }
 
 .settings-drawer [data-slot="switch"] {

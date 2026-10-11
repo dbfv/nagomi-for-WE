@@ -383,6 +383,14 @@ export function App() {
     if (!settingsOpen) return;
     const closeOnEscape = (event: KeyboardEvent): void => {
       if (event.key !== "Escape") return;
+      // The panel's selects open Base UI menus (portalled to the body), and an
+      // Escape aimed at an open menu means "close the menu", not the panel.
+      if (
+        event.target instanceof Element &&
+        event.target.closest('[data-slot="dropdown-menu-content"]')
+      ) {
+        return;
+      }
       handleSettingsOpenChange(false);
     };
     window.addEventListener("keydown", closeOnEscape);

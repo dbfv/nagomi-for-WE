@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { RotateCcw } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { SettingsColorInput, SettingsSlider } from "./settings-controls";
+import { SettingsColorInput, SettingsSelect, SettingsSlider } from "./settings-controls";
 import { useSetting } from "./settings/react";
 import { settings } from "./settings/store";
 import type { SectionId } from "./settings/definition";
@@ -141,16 +141,16 @@ export function QuickSettings({
             <Label htmlFor="quick-koi-family">Koi family</Label>
             <small>The colors below change every koi of this pattern.</small>
           </div>
-          <select
+          <SettingsSelect
             id="quick-koi-family"
-            className="quick-setting__select"
-            value={paletteIndex}
-            onChange={(event) => onFamilyChange(Number(event.target.value))}
-          >
-            {palettes.map((palette, index) => (
-              <option key={palette.name} value={index}>{palette.name}</option>
-            ))}
-          </select>
+            value={String(paletteIndex)}
+            aria-label="Koi family"
+            options={palettes.map((palette, index) => ({
+              value: String(index),
+              label: palette.name,
+            }))}
+            onValueChange={(next) => onFamilyChange(Number(next))}
+          />
         </div>
         <button
           type="button"
@@ -249,16 +249,16 @@ export function QuickSettings({
             <Label htmlFor="quick-weather">Weather</Label>
             <small>A preset changes its own pond colors and lighting.</small>
           </div>
-          <select
+          <SettingsSelect
             id="quick-weather"
-            className="quick-setting__select"
             value={weather}
-            onChange={(event) => onWeatherChange(event.target.value as WeatherPresetId)}
-          >
-            {WEATHER_PRESETS.map((preset) => (
-              <option key={preset.id} value={preset.id}>{preset.label}</option>
-            ))}
-          </select>
+            aria-label="Weather"
+            options={WEATHER_PRESETS.map((preset) => ({
+              value: preset.id,
+              label: preset.label,
+            }))}
+            onValueChange={(next) => onWeatherChange(next as WeatherPresetId)}
+          />
         </div>
         <div className="quick-setting quick-setting--switch" data-base-ui-swipe-ignore>
           <div className="quick-setting__copy">

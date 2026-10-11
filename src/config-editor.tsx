@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { QuickSettings } from "./quick-settings";
-import { SettingsColorInput, SettingsSlider } from "./settings-controls";
+import { SettingsColorInput, SettingsSelect, SettingsSlider } from "./settings-controls";
 import { useSetting } from "./settings/react";
 import { settings } from "./settings/store";
 import { definition, SETTINGS_GROUPS, SECTION_TITLES, SECTION_DESCRIPTIONS, type SectionId } from "./settings/definition";
@@ -106,7 +106,6 @@ function LeafControl({ node, path, label }: { node: AnyNode; path: SettingPath; 
           <Label htmlFor={id}>{prettify(label)}</Label>
           <div className="color-control">
             <SettingsColorInput id={id} value={hex} onChange={(next) => setValue(Number.parseInt(next.slice(1), 16))} />
-            <code>{hex.toUpperCase()}</code>
           </div>
         </div>
       );
@@ -119,7 +118,6 @@ function LeafControl({ node, path, label }: { node: AnyNode; path: SettingPath; 
           <Label htmlFor={id}>{prettify(label)}</Label>
           <div className="color-control">
             <SettingsColorInput id={id} value={hex} onChange={(next) => setValue(rgbFromHex(next))} />
-            <code>{hex.toUpperCase()}</code>
           </div>
         </div>
       );
@@ -222,19 +220,19 @@ function LeafControl({ node, path, label }: { node: AnyNode; path: SettingPath; 
       return (
         <div className="config-property-row" data-base-ui-swipe-ignore>
           <Label htmlFor={id}>{prettify(label)}</Label>
-          <select
+          <SettingsSelect
             id={id}
-            className="quick-setting__select"
             value={String(value)}
-            onChange={(event) => {
-              const option = node.options.find((candidate) => String(candidate.value) === event.target.value);
+            aria-label={prettify(label)}
+            options={node.options.map((option) => ({
+              value: String(option.value),
+              label: option.label,
+            }))}
+            onValueChange={(next) => {
+              const option = node.options.find((candidate) => String(candidate.value) === next);
               if (option) setValue(option.value);
             }}
-          >
-            {node.options.map((option) => (
-              <option key={String(option.value)} value={String(option.value)}>{option.label}</option>
-            ))}
-          </select>
+          />
         </div>
       );
     }

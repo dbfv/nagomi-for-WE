@@ -1,5 +1,13 @@
 import type { ComponentProps } from "react";
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 // Settings commit straight to the store on every pointer movement (no
@@ -160,20 +168,133 @@ export function SettingsSlider({
   );
 }
 
+export type SettingsSelectOption = {
+  /** Value committed to the store. Always a string; callers stringify numerics. */
+  value: string;
+  label: string;
+};
+
+// In-DOM replacement for a native <select>. Wallpaper Engine renders wallpapers
+// through an off-screen CEF browser, and a native select hands its dropdown to a
+// separate popup widget the embedder has to host — the one kind of UI an OSR
+// browser cannot service reliably. This reuses the Base UI menu the control dock
+// already opens for frame rate and weather, so the list stays inside the page.
+export function SettingsSelect({
+  id,
+  value,
+  options,
+  onValueChange,
+  className,
+  "aria-label": ariaLabel,
+}: {
+  id?: string;
+  value: string;
+  options: readonly SettingsSelectOption[];
+  onValueChange: (value: string) => void;
+  className?: string;
+  /** Accessible name. Required: the trigger has no visible text of its own. */
+  "aria-label": string;
+}) {
+  const selected = options.find((option) => option.value === value);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        id={id}
+        type="button"
+        className={cn("quick-setting__select settings-select__trigger", className)}
+        aria-label={ariaLabel}
+      >
+        <span className="settings-select__value">{selected?.label ?? value}</span>
+        <ChevronDown className="settings-select__chevron" aria-hidden="true" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="settings-select__menu" sideOffset={6}>
+        <DropdownMenuRadioGroup value={value} onValueChange={onValueChange}>
+          {options.map((option) => (
+            <DropdownMenuRadioItem
+              key={option.value}
+              value={option.value}
+              closeOnClick
+            >
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const HEX_PATTERN = /^#?([\da-f]{3}|[\da-f]{6})$/i;
+
+/** Accepts `#abc`, `abcdef`, `#ABCDEF`; returns canonical `#aabbcc`, or null. */
+export function normalizeHex(input: string): string | null {
+  const match = HEX_PATTERN.exec(input.trim());
+  if (!match) return null;
+  const digits = match[1].toLowerCase();
+  return `#${digits.length === 3 ? digits.replace(/./g, (character) => character + character) : digits}`;
+}
+
+// In-DOM replacement for <input type="color">. On Windows the native color
+// input opens a separate Chromium/OS dialog window, which an off-screen CEF
+// renderer cannot host. This is a swatch plus a plain hex text field — nothing
+// leaves the page. The value contract is unchanged: a `#rrggbb` string.
 export function SettingsColorInput({
   value,
   onChange,
+  className,
   ...props
 }: Omit<ComponentProps<"input">, "value" | "onChange" | "type"> & {
   value: string;
   onChange: (value: string) => void;
 }) {
+  const [draft, setDraft] = useState(value);
+  const [editing, setEditing] = useState(false);
+
+  // While the field has focus the user owns the text, so a partial entry like
+  // "#3a6" survives mid-typing; otherwise the field mirrors the store.
+  const shown = editing ? draft : value;
+  const swatch = normalizeHex(shown) ?? value;
+
+  const commit = (next: string): void => {
+    setDraft(next);
+    const normalized = normalizeHex(next);
+    if (normalized) onChange(normalized);
+  };
+
   return (
-    <input
-      {...props}
-      type="color"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    />
+    <span className={cn("settings-color", className)}>
+      <span
+        className="settings-color__swatch"
+        style={{ background: swatch }}
+        aria-hidden="true"
+      />
+      <input
+        {...props}
+        type="text"
+        className="settings-color__input"
+        value={shown}
+        spellCheck={false}
+        autoComplete="off"
+        maxLength={7}
+        aria-label={props["aria-label"] ?? "Hex colour"}
+        onFocus={() => {
+          setDraft(value);
+          setEditing(true);
+        }}
+        onChange={(event) => commit(event.target.value)}
+        onBlur={() => setEditing(false)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            commit(draft);
+            event.currentTarget.blur();
+          } else if (event.key === "Escape") {
+            setDraft(value);
+            setEditing(false);
+            event.currentTarget.blur();
+          }
+        }}
+      />
+    </span>
   );
 }
