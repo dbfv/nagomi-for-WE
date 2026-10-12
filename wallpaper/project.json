@@ -1,0 +1,45 @@
+{
+  "title": "Nagomi Koi Pond",
+  "type": "web",
+  "file": "index.html",
+  "general": {
+    "properties": {
+      "deepWater": {
+        "type": "color",
+        "text": "Deep water",
+        "value": "0.726 0.864 0.816",
+        "order": 100
+      },
+      "shallowWater": {
+        "type": "color",
+        "text": "Shallow water",
+        "value": "0.417 0.661 0.542",
+        "order": 200
+      },
+      "koiBody": {
+        "type": "color",
+        "text": "Koi body",
+        "value": "0.945 0.918 0.859",
+        "order": 300
+      },
+      "koiAccent": {
+        "type": "color",
+        "text": "Koi patches",
+        "value": "0.863 0.294 0.184",
+        "order": 400
+      },
+      "koiMarking": {
+        "type": "color",
+        "text": "Koi markings",
+        "value": "0.153 0.145 0.122",
+        "order": 500
+      },
+      "koiFin": {
+        "type": "color",
+        "text": "Koi fins",
+        "value": "0.902 0.867 0.792",
+        "order": 600
+      }
+    }
+  }
+}

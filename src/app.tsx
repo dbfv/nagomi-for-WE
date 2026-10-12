@@ -25,6 +25,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { AMBIENT_AUDIO_URL } from "@/ambient-audio";
+import { connectWallpaperProperties } from "@/wallpaper-properties";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -89,6 +90,10 @@ const emptyStats: SceneStats = {
 // the first render, and wires up debounced+pagehide saving from then on.
 loadInto(settings);
 connectPersistence(settings);
+// Then lets Wallpaper Engine's properties dialog override what was restored:
+// inside the wallpaper the in-page colour fields cannot be typed into, so the
+// colours are set there instead. A no-op on the web build.
+connectWallpaperProperties();
 
 function pondRenderSize(display: HTMLElement): { width: number; height: number } {
   const { width, height } = display.getBoundingClientRect();

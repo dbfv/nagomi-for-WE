@@ -10,7 +10,8 @@ const attr = (attrs: string, name: string): string | undefined =>
   new RegExp(`\\b${name}="([^"]+)"`).exec(attrs)?.[1];
 
 /**
- * Collapses the build into a single self-contained index.html.
+ * Collapses the build into a self-contained index.html, and copies in the
+ * project.json that declares the wallpaper's user properties.
  *
  * Wallpaper Engine renders web wallpapers from file://, and Chromium refuses
  * both things a normal build emits there: an external
@@ -22,6 +23,11 @@ const attr = (attrs: string, name: string): string | undefined =>
 function selfContainedHtml(): Plugin {
   let outDir = "";
   let publicDir = "";
+
+  // index.html is the wallpaper; project.json is what makes Wallpaper Engine
+  // show a property for each colour, since the page itself cannot be typed in.
+  const PROJECT_FILE = "project.json";
+  const allowed = new Set(["index.html", PROJECT_FILE]);
 
   return {
     name: "nagomi:self-contained-html",
@@ -36,6 +42,13 @@ function selfContainedHtml(): Plugin {
     closeBundle() {
       const htmlPath = path.join(outDir, "index.html");
       if (!fs.existsSync(htmlPath)) return;
+
+      // Copied before the inlining below so a missing template fails the build
+      // without having already rewritten index.html.
+      fs.copyFileSync(
+        path.resolve(projectRoot, "wallpaper", PROJECT_FILE),
+        path.join(outDir, PROJECT_FILE),
+      );
 
       const consumed = new Set<string>();
       const unresolved: string[] = [];
@@ -95,12 +108,13 @@ function selfContainedHtml(): Plugin {
         // Absent or not empty: anything left is reported by the check below.
       }
 
-      // The whole point of this build is one file. A second one means an asset
-      // slipped past assetsInlineLimit or the app grew a dynamic import, either
-      // of which would silently fail to load in Wallpaper Engine.
+      // The whole point of this build is that the wallpaper requests nothing
+      // but its own two files. Anything else means an asset slipped past
+      // assetsInlineLimit or the app grew a dynamic import, either of which
+      // would silently fail to load in Wallpaper Engine.
       const strays = fs
         .readdirSync(outDir)
-        .filter((entry) => entry !== "index.html")
+        .filter((entry) => !allowed.has(entry))
         .concat(
           fs.existsSync(path.join(outDir, "assets"))
             ? fs.readdirSync(path.join(outDir, "assets")).map((entry) => `assets/${entry}`)
@@ -108,7 +122,7 @@ function selfContainedHtml(): Plugin {
         );
       if (strays.length > 0) {
         throw new Error(
-          `dist-wallpaper must be a single self-contained index.html, but it also contains:\n  ` +
+          `dist-wallpaper must hold only ${[...allowed].join(" and ")}, but it also contains:\n  ` +
             `${strays.join("\n  ")}\n` +
             `Raise build.assetsInlineLimit if an asset was emitted instead of inlined.`,
         );
@@ -119,10 +133,16 @@ function selfContainedHtml(): Plugin {
 
 // Wallpaper Engine build. Run `pnpm build:wallpaper`, then drag the generated
 // dist-wallpaper/index.html onto Wallpaper Engine's "Create Wallpaper" button.
+//
+// Wallpaper Engine withholds keyboard input from web wallpapers, so the colour
+// fields in the settings drawer cannot be typed into inside the wallpaper. The
+// colours are set in Wallpaper Engine's own properties dialog instead, which is
+// why dist-wallpaper/project.json ships alongside index.html and why the
+// property bridge is swapped in here — see src/wallpaper-properties.ts.
 export default defineConfig({
   base: "./",
-  // dist-wallpaper must hold nothing but index.html, so the public/ files (the
-  // m4a source, the social image, the sitemap) stay out of it.
+  // dist-wallpaper holds only the files the wallpaper itself needs, so the
+  // public/ files (the m4a source, the social image, the sitemap) stay out.
   publicDir: false,
   plugins: [react(), tailwindcss(), selfContainedHtml()],
   resolve: {
@@ -132,6 +152,13 @@ export default defineConfig({
       {
         find: "@/ambient-audio",
         replacement: path.resolve(projectRoot, "src/ambient-audio.wallpaper.ts"),
+      },
+      // Swap in the bridge that reads Wallpaper Engine's user properties. Also
+      // ahead of the generic "@" entry, which would otherwise resolve to the
+      // no-op used by the web build.
+      {
+        find: "@/wallpaper-properties",
+        replacement: path.resolve(projectRoot, "src/wallpaper-properties.wallpaper.ts"),
       },
       { find: "@", replacement: path.resolve(projectRoot, "src") },
     ],
