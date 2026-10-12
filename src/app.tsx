@@ -24,6 +24,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { AMBIENT_AUDIO_URL } from "@/ambient-audio";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -259,12 +260,9 @@ export function App() {
 
     const loading = (async (): Promise<void> => {
       await context.resume();
-      const loadBuffer = async (path: string): Promise<AudioBuffer> => {
-        const response = await fetch(`${import.meta.env.BASE_URL}${path}`);
-        if (!response.ok) throw new Error(`Unable to load ${path}`);
-        return context.decodeAudioData(await response.arrayBuffer());
-      };
-      const ambientBuffer = await loadBuffer(AUDIO.ambient.source);
+      const response = await fetch(AMBIENT_AUDIO_URL);
+      if (!response.ok) throw new Error("Unable to load the ambient audio loop");
+      const ambientBuffer = await context.decodeAudioData(await response.arrayBuffer());
       if (context.state === "closed") return;
 
       const ambientSource = context.createBufferSource();
