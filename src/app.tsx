@@ -163,7 +163,9 @@ export function App() {
   const runtimeRef = useRef<PondRuntime | null>(null);
   const soundEnabledRef = useRef<boolean>(AUDIO.defaultEnabled);
   const [stats, setStats] = useState<SceneStats>(emptyStats);
-  const [dockVisible, setDockVisible] = useState(true);
+  // Starts hidden: this is a wallpaper, so the chrome should not be there until
+  // the bottom-right hit area is clicked.
+  const [dockVisible, setDockVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [weatherMenuOpen, setWeatherMenuOpen] = useState(false);
   const [frameRateMenuOpen, setFrameRateMenuOpen] = useState(false);
